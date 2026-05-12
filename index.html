@@ -713,7 +713,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0;}
     <button class="tab-btn" onclick="switchTab('simulate',this)">🎯 Practice</button>
   </div>
   <div class="hdr-right">
-    <div style="display:flex;align-items:center;gap:8px;"><div class="progress-pill" id="gProgress">0 / 19 complete</div><div class="progress-pill" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:#fff;">v2.1.0</div></div>
+    <div style="display:flex;align-items:center;gap:8px;"><div class="progress-pill" id="gProgress">0 / 19 complete</div><div class="progress-pill" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:#fff;">v2.1.1</div></div>
     <button onclick="openSettings()" title="Settings" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);width:34px;height:34px;border-radius:7px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.18)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">⚙️</button>
   </div>
 </div>
@@ -931,6 +931,18 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0;}
 <div class="toast" id="toast"></div>
 
 <script>
+
+async function safeSpeak(text,type='cust'){
+  try{
+    if(typeof speakText === 'function'){
+      return await speakText(text,type);
+    }
+  }catch(err){
+    console.log('Speech error:',err);
+  }
+}
+
+
 // ══════════════════════════════════════
 // DATA
 // ══════════════════════════════════════
@@ -1172,7 +1184,7 @@ function updateStageBar(){
   const lbl=document.getElementById('stageCurrentName');
   if(lbl)lbl.textContent=curName;
 }
-async function startSim(){
+async async function startSim(){
   const btn=document.getElementById('startBtn');
   btn.disabled=true;btn.textContent='Starting…';
   document.getElementById('simSetup').style.display='none';
@@ -1212,7 +1224,7 @@ async function startSim(){
     }
   }
 
-  await speakText(open,'cust');
+  await safeSpeak(open,'cust');
   btn.disabled=false;btn.textContent='Start Simulation →';
 }
 async 
@@ -1234,7 +1246,7 @@ async function sendSim(){
     if(cfg.voice==='full' || cfg.voice==='mic'){
       await recordAndPlaybackUserVoice(txt);
     }else{
-      await speakText(txt,'rep');
+      await safeSpeak(txt,'rep');
     }
   }catch(e){console.log(e);}
 
@@ -1271,7 +1283,7 @@ Score and coach. JSON only:
   updateStageTracking(scoreR);
   updateAvgGrade();
 
-  await speakText(custR,'cust');
+  await safeSpeak(custR,'cust');
 
   try{
     const d=JSON.parse((scoreR||'').replace(/```json|```/g,'').trim());
@@ -1683,7 +1695,7 @@ function initSettingsPage(){
 
 async function recordAndPlaybackUserVoice(txt){
   try{
-    await speakText(txt,'rep');
+    await safeSpeak(txt,'rep');
   }catch(e){
     console.log(e);
   }
