@@ -1,4 +1,90 @@
 <!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════════════════
+ ROOFVANTAGE SALES TRAINER — MODIFICATION GUIDE FOR AI EDITORS
+═══════════════════════════════════════════════════════════════════════════════
+
+ If you are an AI (ChatGPT, Grok, Claude, etc.) editing this file, read this first.
+
+ ARCHITECTURE
+ ────────────
+ Single-file HTML app. No build step. Open directly in browser or host on
+ GitHub Pages / Netlify. All state in localStorage. No backend.
+
+ FILE LAYOUT (search for these headers to jump to sections)
+ ──────────────────────────────────────────────────────────
+   <style>                              ← all CSS
+     /* ════════ SHARED CHAT UI ════════ */
+     /* ════════ SIMULATE ════════ */
+     /* SCORECARD */
+     /* API KEY MODAL */
+     /* SETTINGS MODAL */
+   
+/* VERSION BADGE */
+.version-badge{
+  position:fixed;bottom:8px;right:10px;z-index:50;
+  font-size:10px;color:var(--muted);letter-spacing:1px;
+  background:rgba(255,255,255,0.85);
+  border:1px solid var(--border);border-radius:99px;
+  padding:2px 8px;font-family:'DM Sans',sans-serif;
+  pointer-events:none;user-select:none;
+}
+</style>
+
+   <body>
+     <!-- API KEY MODAL -->                 ← first-run key entry
+     <!-- HEADER -->                        ← logo + tabs + gear
+     <!-- APP BODY -->
+       <!-- ══ PRACTICE (simulate) ══ -->    ← THE ONLY TAB
+       <!-- ══ SETTINGS MODAL ══ -->         ← gear opens this
+     <!-- SCORECARD -->                     ← post-session results
+
+   <script>
+     // DATA: SECS (19-section script) + STAGES (used by AI coach)
+     // STATE
+     // TABS
+     // SIMULATE              ← main session logic
+     // VOICE — TTS + MIC     ← ElevenLabs → OpenAI → browser fallback
+     // SETTINGS PAGE
+     // DOWNLOAD SESSION
+     // API KEY MODAL (first-run)
+     // CLAUDE API
+     // AI SYSTEM PROMPTS
+     // UTILITIES
+     // INIT
+   </script>
+
+ KEY FUNCTIONS
+ ─────────────
+   startSim()              kicks off a practice session
+   sendSim()               handles each rep response + AI customer reply
+   speakText(txt, who)     unified TTS entry — 'cust' or 'rep'
+   toggleMic('sim')        mic on/off for input
+   downloadSession(fmt)    'txt' or 'html' export with full coaching log
+   claude(msgs, sys)       wrapper for the Anthropic API
+
+ API KEYS
+ ────────
+ Stored in localStorage keys: rv_apikey (Anthropic), rv_oaikey (OpenAI),
+ rv_elkey (ElevenLabs). Never written into the file.
+
+ AI MODELS
+ ─────────
+ Main: claude-sonnet-4-5
+ Key test: claude-haiku-4-5
+ If you need to change these, search for "claude-" in the script.
+
+ ADDING A NEW FEATURE
+ ────────────────────
+ 1. Find the right section header above and add nearby.
+ 2. State variables go near the // STATE block.
+ 3. New buttons go in the topbar (#simActive .sim-topbar) or the Settings modal.
+ 4. Don't duplicate state — reuse `sim`, `cfg`, `ttsEnabled`, `mic`.
+ 5. Bump APP_VERSION at the bottom of the script.
+
+ VERSION: see APP_VERSION constant in script (also shown as a badge bottom-right).
+═══════════════════════════════════════════════════════════════════════════════
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -117,121 +203,8 @@ body{
 .tab-panel{display:none;height:100%;overflow:hidden;}
 .tab-panel.active{display:flex;flex-direction:column;}
 
-/* ════════ LEARN ════════ */
-.learn-wrap{display:grid;grid-template-columns:250px 1fr;height:100%;overflow:hidden;}
+/* ════════ SHARED CHAT UI (used by Practice/Simulate) ════════ */
 
-.learn-nav{
-  background:var(--sidebar);
-  border-right:1px solid var(--border);
-  overflow-y:auto;padding:16px 0;
-}
-.nav-group-lbl{
-  font-size:9px;letter-spacing:2.5px;text-transform:uppercase;
-  color:var(--muted);padding:0 16px 10px;
-}
-.lnav{
-  display:flex;align-items:center;gap:8px;
-  padding:9px 16px;cursor:pointer;transition:all 0.15s;
-  border-left:2px solid transparent;font-size:12px;color:var(--muted);
-}
-.lnav:hover{background:rgba(0,0,0,0.04);color:var(--text2);}
-.lnav.active{background:rgba(237,136,0,0.07);border-left-color:var(--gold2);color:var(--gold);font-weight:600;}
-.lnav.done{color:var(--green);}
-.lnav.done .lnav-dot{background:var(--green);}
-.lnav-dot{width:6px;height:6px;border-radius:50%;background:#ced2dc;flex-shrink:0;transition:0.2s;}
-.lnav.active .lnav-dot{background:var(--gold2);}
-.lnav-num{font-size:10px;color:var(--muted);min-width:18px;}
-
-.learn-main{overflow-y:auto;padding:36px 44px;background:var(--surface);}
-.l-sec{display:none;animation:fadeUp 0.25s ease;}
-.l-sec.active{display:block;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-
-.sec-badge{
-  display:inline-flex;align-items:center;gap:6px;
-  background:var(--gold-dim);border:1px solid var(--gold-glow);
-  border-radius:99px;padding:3px 12px;
-  font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);
-  margin-bottom:12px;
-}
-.sec-title{
-  font-family:'Barlow',sans-serif;font-size:34px;font-weight:800;
-  color:var(--navy);margin-bottom:6px;line-height:1.15;
-}
-.sec-sub{color:var(--muted);font-size:13px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
-
-.obj-box{
-  background:var(--blue-dim);border:1px solid rgba(0,127,163,0.18);
-  border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;gap:10px;
-}
-.obj-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
-.obj-lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);margin-bottom:3px;}
-.obj-txt{font-size:13px;color:var(--text2);}
-
-.reveal-btn{
-  background:var(--gold-dim);border:1px solid var(--gold-glow);
-  color:var(--gold);padding:6px 14px;border-radius:7px;
-  font-size:11px;cursor:pointer;margin-bottom:12px;transition:0.2s;font-family:'DM Sans',sans-serif;
-}
-.reveal-btn:hover{background:rgba(237,136,0,0.16);}
-
-.lines{display:flex;flex-direction:column;gap:7px;margin-bottom:20px;}
-.lcard{
-  background:var(--card2);border:1px solid var(--border);
-  border-radius:8px;padding:12px 16px;
-  cursor:pointer;transition:0.2s;border-left:2px solid #dde0e8;
-}
-.lcard:hover{border-color:#c0c6d4;}
-.lcard.revealed{border-left-color:var(--gold2);}
-.ltag{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
-.t-say{color:var(--gold);}  .t-think{color:var(--blue);}  .t-ask{color:var(--green);}
-.t-close{color:var(--red);} .t-objection{color:var(--purple);}
-.ltext{font-size:14px;line-height:1.6;color:var(--text);}
-.ltext.blur{filter:blur(5px);user-select:none;transition:filter 0.3s;}
-.lhint{font-size:11px;color:var(--muted);margin-top:4px;font-style:italic;}
-
-.kp-box{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px;}
-.kp-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
-.kp{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);}
-.kp:last-child{border-bottom:none;}
-.kp-dot{color:var(--gold2);flex-shrink:0;font-weight:700;}
-
-.quiz-block{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:14px;}
-.quiz-q{font-size:14px;font-weight:500;margin-bottom:14px;color:var(--text);}
-.quiz-opts{display:flex;flex-direction:column;gap:7px;}
-.quiz-opt{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:7px;padding:10px 14px;cursor:pointer;
-  font-size:13px;transition:0.2s;font-family:'DM Sans',sans-serif;
-  color:var(--text2);text-align:left;
-}
-.quiz-opt:hover{border-color:var(--gold2);color:var(--text);}
-.quiz-opt.correct{border-color:var(--green);background:var(--green-dim);color:var(--green);}
-.quiz-opt.wrong{border-color:var(--red);background:var(--red-dim);color:var(--red);}
-.quiz-fb{margin-top:10px;font-size:12px;padding:8px 12px;border-radius:7px;display:none;}
-.quiz-fb.show{display:block;}
-.quiz-fb.good{background:var(--green-dim);color:var(--green);border:1px solid rgba(26,158,106,0.2);}
-.quiz-fb.bad{background:var(--red-dim);color:var(--red);border:1px solid rgba(217,64,64,0.2);}
-
-.sec-nav{display:flex;gap:10px;margin-top:28px;padding-top:20px;border-top:1px solid var(--border);}
-.btn-gold{
-  background:var(--gold2);color:#fff;border:none;
-  padding:10px 24px;border-radius:8px;
-  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
-  cursor:pointer;transition:0.2s;
-}
-.btn-gold:hover{background:var(--gold3);transform:translateY(-1px);}
-.btn-ghost{
-  background:transparent;color:var(--muted);
-  border:1px solid var(--border2);padding:10px 18px;
-  border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:0.2s;
-}
-.btn-ghost:hover{color:var(--text);border-color:#a0a8bc;}
-hr.div{border:none;border-top:1px solid var(--border);margin:18px 0;}
-
-/* ════════ PRACTICE ════════ */
-.practice-wrap{display:grid;grid-template-columns:1fr 1fr;height:100%;overflow:hidden;}
-.prac-script{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--surface);}
 .panel-hdr{
   background:var(--navy);border-bottom:1px solid var(--hdr-border);
   padding:11px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
@@ -245,21 +218,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0;}
   font-size:11px;cursor:pointer;transition:0.2s;font-family:'DM Sans',sans-serif;
 }
 .pnav-btn:hover{color:#fff;background:rgba(255,255,255,0.18);}
-.prac-script-body{flex:1;overflow-y:auto;padding:18px;background:var(--surface);}
-.p-sec{display:none;}
-.p-sec.active{display:block;}
-.p-sec-title{font-family:'Barlow',sans-serif;font-size:20px;font-weight:700;margin-bottom:4px;color:var(--navy);}
-.p-sec-sub{font-size:12px;color:var(--muted);margin-bottom:12px;}
-.p-line{padding:8px 12px;border-radius:6px;margin-bottom:5px;font-size:13px;line-height:1.6;border-left:2px solid;color:var(--text2);}
-.p-say{background:rgba(237,136,0,0.06);border-color:var(--gold2);}
-.p-ask{background:var(--green-dim);border-color:var(--green);}
-.p-think{background:var(--blue-dim);border-color:var(--blue);font-style:italic;color:var(--muted);}
-.p-close{background:var(--red-dim);border-color:var(--red);}
-.p-objection{background:rgba(91,111,168,0.07);border-color:var(--purple);}
-.p-line-lbl{font-size:9px;letter-spacing:1px;text-transform:uppercase;opacity:0.6;margin-bottom:2px;}
 
 /* AI CHAT */
-.prac-chat{display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
 .chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}
 
 .msg-cust{max-width:85%;align-self:flex-start;}
@@ -538,12 +498,95 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0;}
 .bubble .b-first{font-weight:700;display:block;margin-bottom:3px;}
 .bubble .b-rest{font-weight:400;display:block;}
 
-/* BIGGER COACHING */
+/* BIGGER COACHING — v12 increased font/padding for readability */
 .coaching-col{width:360px;}
-.c-item{padding:12px 14px;}
-.c-lbl{font-size:10px;margin-bottom:7px;}
-.c-bullets{gap:5px;}
-.c-bullet{font-size:14px;font-weight:500;line-height:1.6;color:var(--text2);}
+.c-item{padding:14px 16px;}
+.c-lbl{font-size:12px;margin-bottom:9px;font-weight:700;}
+.c-bullets{gap:7px;}
+.c-bullet{font-size:16px;font-weight:500;line-height:1.65;color:var(--text);}
+.c-stage-tag{font-size:11px;font-weight:600;padding:2px 8px;}
+.coaching-hdr{font-size:11px;letter-spacing:2.5px;padding:14px 18px;}
+
+/* OPTIMAL ANSWER CARD */
+.c-item.optimal{border-left:3px solid var(--gold2);background:rgba(237,136,0,0.06);}
+.c-lbl.optimal{color:var(--gold);}
+.opt-section{margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);}
+.opt-section-lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-weight:700;}
+.opt-text{font-size:15px;font-weight:500;line-height:1.65;color:var(--text);font-style:italic;}
+.opt-yours{color:var(--text2);font-style:normal;}
+
+/* RETRY BUTTON ON YOUR MESSAGES */
+.msg-rep{position:relative;}
+.retry-btn{
+  background:rgba(237,136,0,0.12);border:1px solid rgba(237,136,0,0.4);
+  color:var(--gold);font-size:11px;padding:4px 10px;border-radius:6px;
+  cursor:pointer;margin-top:5px;align-self:flex-end;
+  font-family:'DM Sans',sans-serif;transition:0.2s;font-weight:600;
+}
+.retry-btn:hover{background:rgba(237,136,0,0.22);}
+.retry-btn:disabled{opacity:0.4;cursor:default;}
+.msg-rep.retrying .bubble{opacity:0.5;text-decoration:line-through;}
+
+/* Q&A DRAWER */
+.qa-drawer{
+  position:fixed;right:0;top:0;bottom:0;width:380px;
+  background:#fff;border-left:1px solid var(--border);
+  box-shadow:-10px 0 30px rgba(0,30,60,0.08);
+  z-index:300;display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform 0.3s ease;
+}
+.qa-drawer.open{transform:translateX(0);}
+.qa-hdr{
+  background:var(--navy);padding:14px 18px;display:flex;
+  align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.qa-title{font-family:'Barlow',sans-serif;font-size:16px;font-weight:700;color:#fff;}
+.qa-close{
+  background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);
+  color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;
+  font-size:13px;display:flex;align-items:center;justify-content:center;
+}
+.qa-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--bg);}
+.qa-msg{max-width:92%;font-size:14px;line-height:1.6;}
+.qa-msg-you{align-self:flex-end;background:var(--navy);color:#fff;padding:10px 13px;border-radius:10px 10px 3px 10px;font-weight:500;}
+.qa-msg-coach{align-self:flex-start;background:#fff;border:1px solid var(--border);padding:10px 13px;border-radius:10px 10px 10px 3px;color:var(--text);}
+.qa-input-area{border-top:1px solid var(--border);padding:12px 14px;flex-shrink:0;background:#fff;}
+.qa-row{display:flex;gap:7px;align-items:flex-end;}
+.qa-ta{
+  flex:1;background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;padding:9px 13px;color:var(--text);
+  font-family:'DM Sans',sans-serif;font-size:14px;
+  resize:none;min-height:40px;max-height:100px;line-height:1.5;
+}
+.qa-ta:focus{outline:none;border-color:var(--navy4);}
+.qa-empty{text-align:center;color:var(--muted);font-size:13px;padding:30px 20px;}
+.qa-empty-icon{font-size:36px;margin-bottom:10px;}
+.qa-suggestions{display:flex;flex-direction:column;gap:6px;margin-top:14px;}
+.qa-sugg{
+  background:#fff;border:1px solid var(--border);border-radius:8px;
+  padding:8px 12px;font-size:12px;color:var(--text2);cursor:pointer;
+  text-align:left;transition:0.2s;font-family:'DM Sans',sans-serif;
+}
+.qa-sugg:hover{border-color:var(--gold2);color:var(--gold);}
+
+/* Q&A TOGGLE BUTTON */
+.btn-qa{
+  background:var(--blue-dim);border:1px solid var(--blue);
+  color:var(--blue);width:38px;height:38px;border-radius:8px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:14px;transition:0.2s;flex-shrink:0;font-weight:700;
+}
+.btn-qa:hover{background:rgba(0,127,163,0.15);}
+.btn-qa.active{background:var(--blue)!important;color:#fff!important;}
+
+/* RESET CONVERSATION BUTTON (v13) */
+.btn-reset-conv{
+  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);
+  color:rgba(255,255,255,0.85);padding:6px 12px;border-radius:6px;
+  font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;
+  transition:0.2s;white-space:nowrap;font-weight:600;
+}
+.btn-reset-conv:hover{background:rgba(255,255,255,0.18);color:#fff;}
 
 /* SETTINGS TAB */
 .settings-wrap{display:grid;grid-template-columns:200px 1fr;height:100%;overflow:hidden;}
@@ -708,30 +751,16 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0;}
       </div>
     </div>
   </div>
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('learn',this)">📚 Learn</button>
-    <button class="tab-btn" onclick="switchTab('simulate',this)">🎯 Practice</button>
-  </div>
   <div class="hdr-right">
-    <div class="progress-pill" id="gProgress">0 / 19 complete</div>
     <button onclick="openSettings()" title="Settings" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);width:34px;height:34px;border-radius:7px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.18)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">⚙️</button>
   </div>
 </div>
-<div class="prog-line"><div class="prog-line-inner" id="progInner" style="width:0%"></div></div>
 
 <!-- APP BODY -->
 <div class="app-body">
 
-  <!-- ══ LEARN ══ -->
-  <div class="tab-panel active" id="p-learn">
-    <div class="learn-wrap">
-      <div class="learn-nav" id="learnNav"></div>
-      <div class="learn-main" id="learnMain"></div>
-    </div>
-  </div>
-
-  <!-- ══ SIMULATE ══ -->
-  <div class="tab-panel" id="p-simulate">
+  <!-- ══ PRACTICE (simulate) ══ -->
+  <div class="tab-panel active" id="p-simulate">
     <div class="sim-setup" id="simSetup">
       <div class="sim-hero">
         <h2>Live Simulation</h2>
@@ -788,6 +817,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0;}
         <div style="display:flex;align-items:center;gap:6px;">
           <button id="simCustTtsBtn" onclick="toggleTTS('cust')" title="Read customer responses aloud" class="tts-toggle-btn">🔇 Customer</button>
           <button id="simRepTtsBtn"  onclick="toggleTTS('rep')"  title="Read your responses aloud"    class="tts-toggle-btn">🔇 You</button>
+          <button class="btn-reset-conv" onclick="resetConversation()" title="Erase chat and coaching but keep current scenario">↺ Reset</button>
           <button class="btn-end" onclick="endSim()">End & Score</button>
         </div>
       </div>
@@ -797,6 +827,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:18px 0;}
           <div class="sim-input">
             <div class="sim-row">
               <textarea class="chat-ta" id="simInput" placeholder="Respond to the customer…" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendSim();}"></textarea>
+              <button class="btn-qa" id="qaToggleBtn" onclick="toggleQA()" title="Ask a question about the script or coaching">❓</button>
               <button class="btn-mic" id="simMic" onclick="toggleMic('sim')" title="Voice input">🎤</button>
               <button class="btn-send" id="simSend" onclick="sendSim()">➤</button>
             </div>
@@ -1016,11 +1047,15 @@ const STAGES = ["Introduction","Industry Stats","Company Types","Credentials","P
 
 
 // ══════════════════════════════════════
+// APP VERSION (single source of truth — bump on every release)
+// ══════════════════════════════════════
+const APP_VERSION = 'v13';
+
+// ══════════════════════════════════════
 // STATE
 // ══════════════════════════════════════
-let learnIdx=0, learnDone=new Set();
 let cfg={scenario:'single',diff:'realistic',voice:'text',obj:'all'};
-let sim={running:false,msgs:[],exch:0,t0:null,timer:null,stages:new Set(),grades:[],won:false};
+let sim={running:false,msgs:[],exch:0,t0:null,timer:null,stages:new Set(),grades:[],won:false,coachLog:[],lastExchangeId:null};
 let ttsEnabled={cust:false,rep:false};
 let isSpeaking=false;
 let OPENAI_KEY='';
@@ -1049,83 +1084,6 @@ function switchTab(id,btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('p-'+id).classList.add('active');
   btn.classList.add('active');
-}
-
-// ══════════════════════════════════════
-// LEARN TAB
-// ══════════════════════════════════════
-function buildLearn(){
-  const nav=document.getElementById('learnNav');
-  const main=document.getElementById('learnMain');
-  nav.innerHTML='<div class="nav-group-lbl">All Sections</div>';
-  main.innerHTML='';
-  SECS.forEach((s,i)=>{
-    const n=document.createElement('div');
-    n.className='lnav'+(i===0?' active':'');
-    n.id='ln-'+i;
-    n.innerHTML=`<span class="lnav-num">${String(s.id).padStart(2,'0')}</span><span class="lnav-dot"></span><span>${s.title}</span>`;
-    n.onclick=()=>goLearn(i);
-    nav.appendChild(n);
-    const sec=document.createElement('div');
-    sec.className='l-sec'+(i===0?' active':'');
-    sec.id='ls-'+i;
-    let h=`<div class="sec-badge">${s.badge}</div>
-      <div class="sec-title">${s.title}</div>
-      <div class="sec-sub">${s.sub}</div>`;
-    if(s.obj) h+=`<div class="obj-box"><div class="obj-icon">${s.obj.icon}</div><div><div class="obj-lbl">Objective</div><div class="obj-txt">${s.obj.txt}</div></div></div>`;
-    h+=`<button class="reveal-btn" onclick="revealAll(${i})">👁 Reveal All Lines</button><div class="lines">`;
-    s.lines.forEach((l,li)=>{
-      const tc='t-'+(l.t||'say');
-      const tl={say:'SAY',think:'INTERNAL',ask:'ASK',close:'CLOSE',objection:'OBJECTION'}[l.t]||'SAY';
-      const txt = customLines[i+'_'+li] || l.txt;
-      h+=`<div class="lcard" id="lc-${i}-${li}" onclick="revealLine(${i},${li})">
-        <div class="ltag ${tc}">${tl}${l.tag2?' — '+l.tag2:''}</div>
-        <div class="ltext blur" id="lt-${i}-${li}">${txt}</div>
-        <div class="lhint" id="lh-${i}-${li}">Tap to reveal</div></div>`;
-    });
-    h+='</div>';
-    if(s.keys){h+=`<div class="kp-box"><div class="kp-lbl">Key Points</div>`;s.keys.forEach(k=>{h+=`<div class="kp"><span class="kp-dot">→</span><span>${k}</span></div>`;});h+='</div>';}
-    if(s.quiz){h+='<hr class="div">';s.quiz.forEach((q,qi)=>{h+=`<div class="quiz-block"><div class="quiz-q">🧠 ${q.q}</div><div class="quiz-opts">`;q.opts.forEach((o,oi)=>{h+=`<button class="quiz-opt" id="qo-${i}-${qi}-${oi}" onclick="ansQ(${i},${qi},${oi},${q.ans},'${q.fb.replace(/'/g,"\\'")}')">${String.fromCharCode(65+oi)}. ${o}</button>`;});h+=`</div><div class="quiz-fb" id="qf-${i}-${qi}"></div></div>`;});}
-    h+=`<div class="sec-nav">${i>0?`<button class="btn-ghost" onclick="goLearn(${i-1})">← Previous</button>`:''}<button class="btn-gold" onclick="doneLearn(${i})">${i<SECS.length-1?'Mark Done & Continue →':'🎉 Complete Training'}</button></div>`;
-    sec.innerHTML=h;
-    main.appendChild(sec);
-  });
-}
-function goLearn(i){
-  document.querySelectorAll('.l-sec').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.lnav').forEach(n=>n.classList.remove('active'));
-  document.getElementById('ls-'+i).classList.add('active');
-  document.getElementById('ln-'+i).classList.add('active');
-  learnIdx=i;
-  document.getElementById('learnMain').scrollTop=0;
-}
-function revealLine(si,li){
-  const lt=document.getElementById(`lt-${si}-${li}`);
-  const lh=document.getElementById(`lh-${si}-${li}`);
-  const lc=document.getElementById(`lc-${si}-${li}`);
-  if(lt){lt.classList.remove('blur');lc.classList.add('revealed');}
-  if(lh)lh.style.display='none';
-}
-function revealAll(si){SECS[si].lines.forEach((_,li)=>revealLine(si,li));}
-function ansQ(si,qi,sel,ans,fb){
-  document.querySelectorAll(`[id^="qo-${si}-${qi}-"]`).forEach((o,i)=>{
-    o.style.pointerEvents='none';
-    if(i===ans)o.classList.add('correct');
-    else if(i===sel&&i!==ans)o.classList.add('wrong');
-  });
-  const el=document.getElementById(`qf-${si}-${qi}`);
-  el.textContent=fb;el.className='quiz-fb show '+(sel===ans?'good':'bad');
-}
-function doneLearn(i){
-  learnDone.add(i);
-  document.getElementById('ln-'+i).classList.add('done');
-  updateProg();
-  if(i<SECS.length-1)goLearn(i+1);else toast('🎉 All 19 sections complete!');
-}
-function updateProg(){
-  const pct=Math.round(learnDone.size/SECS.length*100);
-  document.getElementById('progInner').style.width=pct+'%';
-  document.getElementById('gProgress').textContent=learnDone.size+' / '+SECS.length+' complete';
 }
 
 // ══════════════════════════════════════
@@ -1177,7 +1135,7 @@ async function startSim(){
   document.getElementById('sb-scenario').textContent=sLabels[cfg.scenario];
   const db=document.getElementById('sb-diff');db.textContent=dLabels[cfg.diff];db.className='sbadge '+dCls[cfg.diff];
   buildStages();
-  sim={running:true,msgs:[],exch:0,t0:Date.now(),timer:null,stages:new Set(),grades:[],won:false,coachLog:[]};
+  sim={running:true,msgs:[],exch:0,t0:Date.now(),timer:null,stages:new Set(),grades:[],won:false,coachLog:[],lastExchangeId:null};
   sim.timer=setInterval(()=>{
     const e=Math.floor((Date.now()-sim.t0)/1000);
     document.getElementById('simClock').textContent=Math.floor(e/60)+':'+(e%60<10?'0':'')+e%60;
@@ -1195,35 +1153,46 @@ async function sendSim(){
   const txt=inp.value.trim();if(!txt||!sim.running)return;
   inp.value='';
   sim.exch++;document.getElementById('simExch').textContent=sim.exch;
-  sim.msgs.push({role:'user',content:txt});
-  addSimMsg('rep',txt);
+  // v12: assign unique ID for retry tracking
+  const exchangeId='ex_'+Date.now();
+  sim.lastExchangeId=exchangeId;
+  sim.msgs.push({role:'user',content:txt,exchangeId});
+  addSimMsg('rep',txt,exchangeId);
   speakText(txt,'rep');
   const sb=document.getElementById('simSend');sb.disabled=true;
   showTyping('sim');
   const sys=buildCustomerSys(cfg.scenario,cfg.diff,'sim');
   const csys=buildCoachSys();
+  // v12: request optimal_answer from coach
+  const customerLastMsg=sim.msgs.slice(0,-1).reverse().find(m=>m.role==='assistant')?.content||'(opening of conversation)';
   const [custR,scoreR]=await Promise.all([
-    claude(sim.msgs,sys),
-    claude([{role:'user',content:`Roofing sales rep said:\n"${txt}"\n\nScore and coach. JSON only:\n{"grade":"B","score":78,"stage":"Shingles","tip":"1-2 sentence tip.","customer_bought":false}`}],csys)
+    claude(sim.msgs.map(m=>({role:m.role,content:m.content})),sys),
+    claude([{role:'user',content:`The customer just said:\n"${customerLastMsg}"\n\nThe roofing sales rep responded:\n"${txt}"\n\nScore the response AND write an optimal version that combines what was good about their response with what's missing from the script. JSON only:\n{"grade":"B","score":78,"stage":"Shingles","tip":"1-2 sentence specific coaching tip.","optimal_answer":"Rewritten response that keeps the rep's tone but adds the missing script elements and proper structure.","customer_bought":false}`}],csys)
   ]);
   removeTyping('sim');
   if(!custR){sb.disabled=false;return;}
-  sim.msgs.push({role:'assistant',content:custR});
+  sim.msgs.push({role:'assistant',content:custR,exchangeId});
   addSimMsg('customer',custR);
-  showExchangeScore('sim',scoreR);
-  addCoachItem(scoreR);
+  showExchangeScore('sim',scoreR,exchangeId);
+  addCoachItem(scoreR,exchangeId);
+  addOptimalAnswerCard(scoreR,txt,exchangeId); // v12
   updateStageTracking(scoreR);
   updateAvgGrade();
   speakText(custR,'cust');
   try{const d=JSON.parse((scoreR||'').replace(/```json|```/g,'').trim());if(d.customer_bought){sim.won=true;setTimeout(()=>endSim(true),1500);}}catch(e){}
   sb.disabled=false;
 }
-function addSimMsg(who,txt){
+function addSimMsg(who,txt,exchangeId){
   const c=document.getElementById('simMsgs');
   const d=document.createElement('div');
   d.className='msg-'+who;
+  if(exchangeId)d.dataset.exchangeId=exchangeId;
   const formattedTxt = who==='customer' ? formatBubble(txt) : autoFormat(escHtml(txt));
-  d.innerHTML=`<div class="msg-lbl">${who==='customer'?'🏠 Homeowner':'👤 You'}</div><div class="bubble">${formattedTxt}</div>`;
+  let retryBtn='';
+  if(who==='rep' && exchangeId){
+    retryBtn=`<button class="retry-btn" onclick="retryResponse('${exchangeId}')" title="Erase this response and try a better one">↻ Retry Response</button>`;
+  }
+  d.innerHTML=`<div class="msg-lbl">${who==='customer'?'🏠 Homeowner':'👤 You'}</div><div class="bubble">${formattedTxt}</div>${retryBtn}`;
   c.appendChild(d);c.scrollTop=c.scrollHeight;
 }
 
@@ -1237,13 +1206,14 @@ function autoFormat(html){
   return html; // short response stays as-is
 }
 
-function showExchangeScore(ctx,raw){
+function showExchangeScore(ctx,raw,exchangeId){
   try{
     const d=JSON.parse((raw||'').replace(/```json|```/g,'').trim());
     const container=document.getElementById('simMsgs');
     const gc=gradeColor(d.grade||'C');
     const div=document.createElement('div');
     div.className='exchange-score';
+    if(exchangeId)div.dataset.exchangeId=exchangeId;
     div.innerHTML=`<div class="es-top">
       <div><div class="es-label">Response Grade</div><div class="es-grade ${gc}">${d.grade||'C'}</div></div>
       <div style="text-align:right"><div class="es-label">Score</div><div class="es-points">${d.score||'—'} pts</div></div>
@@ -1252,14 +1222,13 @@ function showExchangeScore(ctx,raw){
     <div class="es-stage">📍 Stage: ${escHtml(d.stage||'—')}</div>`;
     container.appendChild(div);container.scrollTop=container.scrollHeight;
     if(d.grade)sim.grades.push(d.grade);
-    // Store coaching for download
     sim.coachLog = sim.coachLog || [];
-    sim.coachLog.push({grade:d.grade||'C',score:d.score,tip:d.tip||'',stage:d.stage||'—',exchange:sim.exch});
+    sim.coachLog.push({grade:d.grade||'C',score:d.score,tip:d.tip||'',stage:d.stage||'—',exchange:sim.exch,exchangeId});
   }catch(e){}
 }
 function gradeColor(g){const f=(g||'')[0]?.toUpperCase();return f==='A'?'grade-a':f==='B'?'grade-b':f==='C'?'grade-c':'grade-d';}
 
-function addCoachItem(raw){
+function addCoachItem(raw,exchangeId){
   try{
     const d=JSON.parse((raw||'').replace(/```json|```/g,'').trim());
     const feed=document.getElementById('coachFeed');
@@ -1270,11 +1239,127 @@ function addCoachItem(raw){
     const bullets=tips.map(t=>`<li class="c-bullet"><span>${escHtml(t.trim())}</span></li>`).join('');
     const item=document.createElement('div');
     item.className=`c-item ${cls}`;
+    if(exchangeId)item.dataset.exchangeId=exchangeId;
     item.innerHTML=`<div class="c-lbl ${cls}">${lbl}</div>
       <ul class="c-bullets">${bullets||`<li class="c-bullet"><span>${escHtml(d.tip||'')}</span></li>`}</ul>
       ${d.stage?`<div class="c-stage-tag">📍 ${escHtml(d.stage)}</div>`:''}`;
     feed.insertBefore(item,feed.firstChild);
   }catch(e){}
+}
+
+// v12: Add optimal answer card showing rep's response side-by-side with improved version
+function addOptimalAnswerCard(raw,yourAnswer,exchangeId){
+  try{
+    const d=JSON.parse((raw||'').replace(/```json|```/g,'').trim());
+    if(!d.optimal_answer)return;
+    const feed=document.getElementById('coachFeed');
+    const item=document.createElement('div');
+    item.className='c-item optimal';
+    if(exchangeId)item.dataset.exchangeId=exchangeId;
+    item.innerHTML=`<div class="c-lbl optimal">💡 Better Answer</div>
+      <div class="opt-section" style="border-top:none;padding-top:0;margin-top:0;">
+        <div class="opt-section-lbl">Your Response</div>
+        <div class="opt-text opt-yours">${escHtml(yourAnswer)}</div>
+      </div>
+      <div class="opt-section">
+        <div class="opt-section-lbl">Improved Version</div>
+        <div class="opt-text">${escHtml(d.optimal_answer)}</div>
+      </div>`;
+    feed.insertBefore(item,feed.firstChild);
+  }catch(e){}
+}
+
+
+
+// ══════════════════════════════════════
+// RETRY RESPONSE (v12)
+// ══════════════════════════════════════
+async function retryResponse(exchangeId){
+  if(!sim.running){toast('Session ended — no retry available.');return;}
+  // Remove all DOM elements tied to this exchange
+  document.querySelectorAll(`[data-exchange-id="${exchangeId}"]`).forEach(el=>el.remove());
+  // Remove the corresponding messages from sim.msgs (rep + customer reply tied to this exchange)
+  const beforeLen=sim.msgs.length;
+  sim.msgs=sim.msgs.filter(m=>m.exchangeId!==exchangeId);
+  const removed=beforeLen-sim.msgs.length;
+  // Remove the corresponding coach log entries
+  if(sim.coachLog){
+    sim.coachLog=sim.coachLog.filter(c=>c.exchangeId!==exchangeId);
+  }
+  // Pop the last grade since we removed it
+  if(sim.grades.length>0)sim.grades.pop();
+  // Decrement exchange count
+  if(sim.exch>0)sim.exch--;
+  document.getElementById('simExch').textContent=sim.exch;
+  updateAvgGrade();
+  sim.lastExchangeId=null;
+  toast(`↻ Retry mode — your previous response was erased (removed ${removed} messages). Try again.`);
+  document.getElementById('simInput').focus();
+}
+
+// ══════════════════════════════════════
+// Q&A DRAWER (v12)
+// ══════════════════════════════════════
+let qaHistory=[];
+function toggleQA(){
+  const drawer=document.getElementById('qaDrawer');
+  const btn=document.getElementById('qaToggleBtn');
+  const isOpen=drawer.classList.toggle('open');
+  btn.classList.toggle('active',isOpen);
+  if(isOpen){
+    setTimeout(()=>document.getElementById('qaInput').focus(),300);
+  }
+}
+
+async function sendQA(){
+  const inp=document.getElementById('qaInput');
+  const q=inp.value.trim();
+  if(!q)return;
+  inp.value='';
+  // Clear empty state if present
+  const msgs=document.getElementById('qaMsgs');
+  const empty=msgs.querySelector('.qa-empty');
+  if(empty)empty.remove();
+  // Add user message
+  const userMsg=document.createElement('div');
+  userMsg.className='qa-msg qa-msg-you';
+  userMsg.textContent=q;
+  msgs.appendChild(userMsg);
+  msgs.scrollTop=msgs.scrollHeight;
+  qaHistory.push({role:'user',content:q});
+  // Show thinking dots
+  const thinking=document.createElement('div');
+  thinking.className='qa-msg qa-msg-coach';
+  thinking.innerHTML='<div class="dots"><span></span><span></span><span></span></div>';
+  msgs.appendChild(thinking);
+  msgs.scrollTop=msgs.scrollHeight;
+  // Build context-aware system prompt
+  const lastCust=sim.msgs.slice().reverse().find(m=>m.role==='assistant')?.content||'';
+  const lastRep=sim.msgs.slice().reverse().find(m=>m.role==='user')?.content||'';
+  const ctxBlock=sim.running?`\n\nCURRENT SESSION CONTEXT:\nLast customer said: "${lastCust}"\nLast rep response: "${lastRep}"`:'';
+  const sys=buildCoachSys().replace('Respond ONLY with valid JSON. No preamble, no markdown.',
+    `You are answering the trainee's question directly. Be specific, concise (2-4 sentences), and reference the actual RoofVantage script. If they ask about handling an objection, give the exact words to say.${ctxBlock}`);
+  const resp=await claude(qaHistory,sys);
+  thinking.remove();
+  if(!resp){
+    const err=document.createElement('div');
+    err.className='qa-msg qa-msg-coach';
+    err.textContent='Sorry — I couldn\'t get an answer. Check your API key and try again.';
+    msgs.appendChild(err);
+    return;
+  }
+  qaHistory.push({role:'assistant',content:resp});
+  const coachMsg=document.createElement('div');
+  coachMsg.className='qa-msg qa-msg-coach';
+  coachMsg.textContent=resp;
+  msgs.appendChild(coachMsg);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+// Suggestion button helper
+function askQA(question){
+  document.getElementById('qaInput').value=question;
+  sendQA();
 }
 
 function updateStageTracking(raw){
@@ -1340,9 +1425,49 @@ function resetSim(){
   document.getElementById('simAvgGrade').textContent='—';
   document.getElementById('stagePctBar').style.width='0%';
   document.getElementById('stagePctLabel').textContent='0 / 19 stages';
-  sim={running:false,msgs:[],exch:0,t0:null,timer:null,stages:new Set(),grades:[],won:false,coachLog:[]};
+  sim={running:false,msgs:[],exch:0,t0:null,timer:null,stages:new Set(),grades:[],won:false,coachLog:[],lastExchangeId:null};
   document.getElementById('startBtn').disabled=false;
   document.getElementById('startBtn').textContent='Start Simulation →';
+}
+
+// ══════════════════════════════════════
+// RESET CONVERSATION (v13) — wipe chat/coaching, keep scenario active
+// ══════════════════════════════════════
+async function resetConversation(){
+  if(!sim.running){toast('No active conversation to reset.');return;}
+  if(!confirm('Reset this conversation? Your chat, coaching, and scores will be erased but the same scenario continues.'))return;
+  // Stop any audio
+  if(window.speechSynthesis)window.speechSynthesis.cancel();
+  isSpeaking=false;removeSpeakingIndicator();
+  if(mic.on){try{mic.rec&&mic.rec.stop();}catch(e){}mic.on=false;}
+  // Stop timer
+  if(sim.timer)clearInterval(sim.timer);
+  // Wipe DOM
+  document.getElementById('simMsgs').innerHTML='';
+  document.getElementById('coachFeed').innerHTML='<div class="c-item tip"><div class="c-lbl tip">Tip</div><ul class="c-bullets"><li class="c-bullet"><span>Conversation reset. Start with your greeting and try again.</span></li></ul></div>';
+  document.getElementById('simExch').textContent='0';
+  document.getElementById('simClock').textContent='0:00';
+  document.getElementById('simAvgGrade').textContent='—';
+  document.getElementById('stagePctBar').style.width='0%';
+  // Reset stage list
+  document.querySelectorAll('.stage-it').forEach((el,i)=>{el.className='stage-it'+(i===0?' cur':'');});
+  const lbl=document.getElementById('stageCurrentName');if(lbl)lbl.textContent='Not started';
+  const pl=document.getElementById('stagePctLabel');if(pl)pl.textContent='0 / 19';
+  // Reset state, keep config and running flag
+  sim={running:true,msgs:[],exch:0,t0:Date.now(),timer:null,stages:new Set(),grades:[],won:false,coachLog:[],lastExchangeId:null};
+  // Restart timer
+  sim.timer=setInterval(()=>{
+    const e=Math.floor((Date.now()-sim.t0)/1000);
+    document.getElementById('simClock').textContent=Math.floor(e/60)+':'+(e%60<10?'0':'')+e%60;
+  },1000);
+  // Customer opens again
+  toast('↺ Conversation reset — fresh start with same scenario');
+  const sys=buildCustomerSys(cfg.scenario,cfg.diff,'sim');
+  const open=await claude([{role:'user',content:'[Start: you are a homeowner opening the door. Brief natural greeting as if answering the door, 1-2 sentences.]'}],sys);
+  if(!open)return;
+  sim.msgs.push({role:'assistant',content:open});
+  addSimMsg('customer',open);
+  speakText(open,'cust');
 }
 
 // ══════════════════════════════════════
@@ -1624,7 +1749,34 @@ function downloadSession(format){
       const col={A:'#1a9e6a',B:'#ED8800',C:'#c47a00',D:'#d94040',F:'#d94040'}[c.grade[0]]||'#888';
       return `<div style="background:#fff;border:1px solid #dde0e8;border-left:3px solid ${col};border-radius:8px;padding:12px 14px;margin-bottom:8px;"><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:22px;font-weight:800;color:${col};">${c.grade}</span><span style="font-size:13px;color:#888;">${c.score} pts · Exchange ${c.exchange}</span></div><div style="font-size:14px;color:#1a2540;font-weight:500;margin-bottom:5px;">${(c.tip||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div style="font-size:11px;color:#888;">📍 ${c.stage}</div></div>`;
     }).join('');
-    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>RoofVantage Session — ${date}</title><style>body{font-family:'Helvetica Neue',sans-serif;background:#f5f6f8;margin:0;padding:0;}.wrap{max-width:900px;margin:0 auto;padding:32px 24px;}h1{font-size:28px;color:#003865;margin-bottom:4px;}h2{font-size:16px;font-weight:700;color:#003865;margin:28px 0 12px;padding-bottom:8px;border-bottom:2px solid #ED8800;}.score-box{background:#003865;color:#fff;border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:24px;margin-bottom:24px;}.score-num{font-size:56px;font-weight:800;line-height:1;}.score-info{font-size:14px;opacity:0.85;}.score-grade{font-size:20px;font-weight:700;margin-bottom:4px;}</style></head><body><div class="wrap"><h1>RoofVantage Training Session</h1><p style="color:#888;font-size:13px;margin-bottom:20px;">${date} at ${time}</p><div class="score-box"><div class="score-num">${score}</div><div class="score-info"><div class="score-grade">${grade}</div><div>${summary}</div></div></div><h2>Conversation Transcript</h2><div>${msgHtml}</div><h2>Live Coaching Log</h2><div>${coachHtml}</div></div></body></html>`;
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>RoofVantage Session — ${date}</title><style>body{font-family:'Helvetica Neue',sans-serif;background:#f5f6f8;margin:0;padding:0;}.wrap{max-width:900px;margin:0 auto;padding:32px 24px;}h1{font-size:28px;color:#003865;margin-bottom:4px;}h2{font-size:16px;font-weight:700;color:#003865;margin:28px 0 12px;padding-bottom:8px;border-bottom:2px solid #ED8800;}.score-box{background:#003865;color:#fff;border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:24px;margin-bottom:24px;}.score-num{font-size:56px;font-weight:800;line-height:1;}.score-info{font-size:14px;opacity:0.85;}.score-grade{font-size:20px;font-weight:700;margin-bottom:4px;}</style></head><body><div class="wrap"><h1>RoofVantage Training Session</h1><p style="color:#888;font-size:13px;margin-bottom:20px;">${date} at ${time}</p><div class="score-box"><div class="score-num">${score}</div><div class="score-info"><div class="score-grade">${grade}</div><div>${summary}</div></div></div><h2>Conversation Transcript</h2><div>${msgHtml}</div><h2>Live Coaching Log</h2><div>${coachHtml}</div></div>
+<!-- Q&A DRAWER (v12) -->
+<div class="qa-drawer" id="qaDrawer">
+  <div class="qa-hdr">
+    <div class="qa-title">❓ Ask the Coach</div>
+    <button class="qa-close" onclick="toggleQA()">✕</button>
+  </div>
+  <div class="qa-msgs" id="qaMsgs">
+    <div class="qa-empty">
+      <div class="qa-empty-icon">💭</div>
+      <div>Ask anything about the script, an objection you faced, or how to improve your last response. Your session keeps running.</div>
+      <div class="qa-suggestions">
+        <button class="qa-sugg" onclick="askQA('What\'s the best response when they say they want other bids?')">💬 How do I handle &ldquo;I want other bids&rdquo;?</button>
+        <button class="qa-sugg" onclick="askQA('How should I respond to price objections?')">💰 Best price objection response?</button>
+        <button class="qa-sugg" onclick="askQA('What does my last response need to improve?')">📊 Critique my last response</button>
+        <button class="qa-sugg" onclick="askQA('When should I do the assumption close?')">🎯 When to use assumption close?</button>
+      </div>
+    </div>
+  </div>
+  <div class="qa-input-area">
+    <div class="qa-row">
+      <textarea class="qa-ta" id="qaInput" placeholder="Ask the coach anything…" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendQA();}"></textarea>
+      <button class="btn-send" onclick="sendQA()">➤</button>
+    </div>
+  </div>
+</div>
+<div class="version-badge" id="versionBadge"></div>
+</body></html>`;
     triggerDownload(new Blob([html],{type:'text/html'}),`RoofVantage-Session-${date.replace(/ /g,'-')}.html`);
   }
 }
@@ -1922,6 +2074,7 @@ function buildCoachSys(){
 Sections: Introduction, Industry Stats, Company Types, Credentials, Project Manager, Mission, Shingles, Warranty, Installation Day, Decking, Flashing, Underlayment, Synthetic, Drip Edge, Starter/Wind, Shingle Tech, Cleanup, Pre-Close (3 yeses), Pricing (4 drops: 1-year→30-day→same-day→CertainTeed bucks).
 Key tactics: rapport first, get micro-yeses, never cut price without a story, assumption close ("cash or check?"), uncover real objection before going to next price level.
 Grades: A=perfect, B=good, C=adequate missed opportunity, D=weak/off-script.
+When grading a response, ALSO produce an optimal_answer field: a rewritten version that keeps the rep's tone but adds missing script elements and proper sales structure. Concise (2-3 sentences).
 Respond ONLY with valid JSON. No preamble, no markdown.`;
 }
 
@@ -1938,9 +2091,8 @@ function formatBubble(text){
 // ══════════════════════════════════════
 // INIT
 // ══════════════════════════════════════
-buildLearn();
-updateProg();
 loadApiKey();
+document.getElementById('versionBadge').textContent = APP_VERSION;
 </script>
 </body>
 </html>
